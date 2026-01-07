@@ -1,18 +1,20 @@
+"""CuboAI API functions for authentication, token management, and data retrieval."""
 import base64
 import hashlib
 import hmac
-import boto3
-import requests
-import jwt
-import os
+import importlib
 import json
+import logging
+import os
+import subprocess
 import sys
 import time
-import glob
-import subprocess
-import importlib
-from datetime import datetime
-from custom_components.cuboai.utils import log_to_file
+
+import boto3
+import jwt
+import requests
+
+_LOGGER = logging.getLogger(__name__)
 
 
 ACCESS_TOKEN_FILE = "/config/cuboai_access_token.json"
@@ -30,13 +32,13 @@ def save_access_token(access_token):
     try:
         _atomic_write(ACCESS_TOKEN_FILE, json.dumps({"access_token": access_token}))
     except Exception as e:
-        log_to_file(f"Failed to save access_token: {e}")
+        _LOGGER.error("Failed to save access_token: %s", e)
 
 def save_refresh_token(refresh_token):
     try:
         _atomic_write(REFRESH_TOKEN_FILE, json.dumps({"refresh_token": refresh_token}))
     except Exception as e:
-        log_to_file(f"Failed to save refresh_token: {e}")
+        _LOGGER.error("Failed to save refresh_token: %s", e)
 
 
 def load_access_token():
@@ -73,7 +75,7 @@ def ensure_warrant_installed():
     if not os.path.exists(site_packages):
         try:
             os.makedirs(site_packages, exist_ok=True)
-            log_to_file(f"Created missing folder: {site_packages}")
+            _LOGGER.info("Created missing folder: %s", site_packages)
         except Exception as e:
             raise ImportError(f"Failed to create deps folder {site_packages}: {e}")
 
@@ -87,7 +89,7 @@ def ensure_warrant_installed():
         return True
     except ImportError:
         try:
-            log_to_file("warrant not found, attempting auto-install warrant==0.6.1...")
+            _LOGGER.info("warrant not found, attempting auto-install warrant==0.6.1...")
             subprocess.check_call([
                 sys.executable,
                 "-m",
@@ -102,7 +104,7 @@ def ensure_warrant_installed():
             ])
             importlib.invalidate_caches()
             from warrant.aws_srp import AWSSRP  # noqa: F401
-            log_to_file("warrant successfully installed.")
+            _LOGGER.info("warrant successfully installed")
             return True
         except Exception as e:
             raise ImportError(
@@ -196,10 +198,10 @@ def refresh_cubo_token(refresh_token, user_agent):
 
 
 def refresh_access_token_only(refresh_token, user_agent):
-    log_to_file(f"Refreshing CuboAI token with refresh_token: {refresh_token[:12]}...")
+    _LOGGER.debug("Refreshing CuboAI token with refresh_token: %s...", refresh_token[:12])
     disk_token = load_refresh_token() or refresh_token
     resp = refresh_cubo_token(disk_token, user_agent)
-    log_to_file(f"Token refresh response: {json.dumps(resp, indent=2)}")
+    _LOGGER.debug("Token refresh successful")
     access_token = resp.get("access_token")
     new_refresh_token = resp.get("refresh_token", disk_token)
     save_access_token(access_token)

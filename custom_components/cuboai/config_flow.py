@@ -1,18 +1,14 @@
+"""Config flow for CuboAI integration."""
 import logging
 import random
+
 import voluptuous as vol
 from homeassistant import config_entries
+
 from .const import DOMAIN
 from .api import cuboai_functions as api
 
-# Dedicated file logger for CuboAI
-file_handler = logging.FileHandler('/config/cuboai_auth.log')
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.addHandler(file_handler)
-_LOGGER.setLevel(logging.DEBUG)
 
 AUTH_SCHEMA = vol.Schema({
     vol.Required("username"): str,
